@@ -11,6 +11,12 @@ const propTypes = {
   // Set to true if we want to start with animation immediately when a
   // destination element is unmounted
   startOnDestinationWillUnmount: PropTypes.bool,
+  customSourceLayoutDimensions: PropTypes.shape({
+    x: PropTypes.number,
+    y: PropTypes.number,
+    width: PropTypes.number,
+    height: PropTypes.number,
+  })
 };
 const defaultProps = {
   startOnDestinationDidMount: false,
@@ -290,11 +296,15 @@ class SharedElement extends PureComponent {
     }
   };
   onDestinationLayout = data => {
-    const { startOnDestinationDidMount } = this.props;
+    const { startOnDestinationDidMount, customSourceLayoutDimensions } = this.props;
     const { source, destination } = getElement(this.props);
 
     this.measure(source.ref, sourcePosition => {
-      setSourcePosition(this.props, sourcePosition);
+      const sourceLayoutPos = {
+        ...sourcePosition,
+        ...customSourceLayoutDimensions
+      }
+      setSourcePosition(this.props, sourceLayoutPos);
 
       this.measure(destination.ref, destinationPosition => {
         const startAnimation = get(this.props, 'waitingForDestination');
