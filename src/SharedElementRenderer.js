@@ -11,17 +11,18 @@ const childContextTypes = {
 class SharedElementRenderer extends PureComponent {
   constructor(props) {
     super(props);
-
     this.isRunning = {};
     this.state = {
       config: null,
     };
   }
+
   getChildContext() {
     return {
       moveSharedElement: this.moveSharedElement,
     };
   }
+
   onMoveWillStart = () => {
     const { config } = this.state;
     const { onMoveWillStart, element } = config;
@@ -33,6 +34,7 @@ class SharedElementRenderer extends PureComponent {
       onMoveWillStart(config);
     }
   };
+
   onMoveDidComplete = () => {
     const { config } = this.state;
     const { onMoveDidComplete, element } = config;
@@ -46,9 +48,11 @@ class SharedElementRenderer extends PureComponent {
 
     this.reset();
   };
+
   reset = () => {
     this.setState({ config: null });
   };
+
   // This method will compute animations. Position and scale.
   getAnimations = config => {
     const { element, animationConfig } = config;
@@ -56,9 +60,14 @@ class SharedElementRenderer extends PureComponent {
 
     const animations = [];
     let translateYValue = 0;
+    let translateXValue = 0;
 
     if (!Number.isNaN(source.position.pageY)) {
       translateYValue = new Animated.Value(source.position.pageY);
+    }
+
+    if (!Number.isNaN(source.position.pageX)) {
+      translateXValue = new Animated.Value(source.position.pageX);
     }
 
     if (source.position.pageY !== destination.position.pageY) {
@@ -73,8 +82,21 @@ class SharedElementRenderer extends PureComponent {
       );
     }
 
+    if (source.position.pageX !== destination.position.pageX) {
+      this.setState({ translateXValue });
+
+      animations.push(
+        Animated.timing(translateXValue, {
+          toValue: destination.position.pageX,
+          useNativeDriver: true,
+          ...animationConfig,
+        }),
+      );
+    }
+
     return animations;
   };
+
   moveSharedElement = config => {
     const { id } = config.element;
     // animation was already started
@@ -93,8 +115,9 @@ class SharedElementRenderer extends PureComponent {
       Animated.parallel(animations).start(this.onMoveDidComplete);
     }, 0);
   };
+
   renderSharedElement() {
-    const { config, translateYValue } = this.state;
+    const { config, translateYValue, translateXValue } = this.state;
     const { element } = config || {};
     const { source, node } = element || {};
     const { position } = source || {};
@@ -108,6 +131,10 @@ class SharedElementRenderer extends PureComponent {
 
     if (translateYValue) {
       transform.push({ translateY: translateYValue });
+    }
+
+    if (translateXValue) {
+      transform.push({ translateX: translateXValue });
     }
 
     const animatedStyle = {
@@ -124,6 +151,7 @@ class SharedElementRenderer extends PureComponent {
       </View>
     );
   }
+
   render() {
     const { children } = this.props;
 
