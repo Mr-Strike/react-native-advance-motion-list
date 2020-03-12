@@ -11,14 +11,41 @@ const propTypes = {
   // Set to true if we want to start with animation immediately when a
   // destination element is unmounted
   startOnDestinationWillUnmount: PropTypes.bool,
-  customSourceLayoutDimensions: PropTypes.shape({
+  // Use to set custom animation configuration like duration, delay, etc.
+  animationConfig: PropTypes.object,
+  // Custom source layout dimensions that can be set while rendering destination element
+  customSourceLayoutForDestination: PropTypes.shape({
+    height: PropTypes.number,
+    pageX: PropTypes.number,
+    pageY: PropTypes.number,
     x: PropTypes.number,
     y: PropTypes.number,
     width: PropTypes.number,
+  }),
+  // Custom destination layout dimensions that can be set while rendering destination element
+  customDestinationLayoutForDestination: PropTypes.shape({
     height: PropTypes.number,
-  })
+    pageX: PropTypes.number,
+    pageY: PropTypes.number,
+    x: PropTypes.number,
+    y: PropTypes.number,
+    width: PropTypes.number,
+  }),
+  // Callback functions for updates in rendering of destination element
+  onMoveToDestinationDidFinish: PropTypes.func,
+  onMoveToDestinationWillStart: PropTypes.func,
+  // Callback functions for updates in rendering of source element
+  onMoveToSourceDidFinish: PropTypes.func,
+  onMoveToSourceWillStart: PropTypes.func,
 };
 const defaultProps = {
+  animationConfig: {},
+  customSourceLayoutForDestination: {},
+  customDestinationLayoutForDestination: {},
+  onMoveToDestinationDidFinish: () => {},
+  onMoveToDestinationWillStart: () => {},
+  onMoveToSourceDidFinish: () => {},
+  onMoveToSourceWillStart: () => {},
   startOnDestinationDidMount: false,
   startOnDestinationWillUnmount: false,
 };
@@ -27,11 +54,14 @@ const contextTypes = {
 };
 
 const elements = {};
-// Test if the shred element is destination or source
+
+// Test if the shared element is destination or source
 const isDestination = props => !!props.sourceId;
+
 // Destination element has id as a sourceId and source element has an id as an
 // id prop
 const getKey = props => props.id || props.sourceId;
+
 // Create a element with provided id
 const initElement = props => {
   const { id, sourceId } = props;
@@ -62,6 +92,7 @@ const initElement = props => {
     },
   };
 };
+
 // To store props of source and destination. We want to fire event even for
 // source element if the destination was animated.
 const setProps = props => {
@@ -73,6 +104,7 @@ const setProps = props => {
     elements[key].source.props = props;
   }
 };
+
 // To store references of elements.
 const setRef = (props, node) => {
   const key = getKey(props);
@@ -83,6 +115,7 @@ const setRef = (props, node) => {
     elements[key].source.ref = node;
   }
 };
+
 // Node which will be animated. We are trying to observe element as a clone of
 // children. But if we want to do something with that children (for example
 // set an opacity once it is moved, it is better to provide getNode)
@@ -101,6 +134,7 @@ const setNode = props => {
     elements[key].node = React.cloneElement(props.children);
   }
 };
+
 const setSourcePosition = (props, position) => {
   if (!position) {
     return;
@@ -111,6 +145,7 @@ const setSourcePosition = (props, position) => {
   const key = getKey(props);
   elements[key].source.position = position;
 };
+
 const setDestinationPosition = (props, position) => {
   if (!position) {
     return;
@@ -121,44 +156,37 @@ const setDestinationPosition = (props, position) => {
   const key = getKey(props);
   elements[key].destination.position = position;
 };
+
 const set = (props, propName, value) => {
   const key = getKey(props);
   elements[key][propName] = value;
 };
+
 const get = (props, propName) => {
   const key = getKey(props);
   return elements[key][propName];
 };
+
 const getElement = props => {
   const key = getKey(props);
   return elements[key];
 };
-const getAnimationConfig = props => {
-  // get only animation config
-  const {
-    id,
-    sourceId,
-    children,
-    onMoveToSourceWillStart,
-    onMoveToSourceDidFinish,
-    onMoveToDestinationWillStart,
-    onMoveToDestinationDidFinish,
-    startOnDestinationDidMount,
-    startOnDestinationWillUnmount,
-    // should contains only animation config
-    ...animationConfig
-  } = props;
 
+const getAnimationConfig = props => {
+  const { animationConfig = {} } = props;
   return animationConfig;
 };
+
 const getAnimationConfigOfSource = props => {
   const element = getElement(props);
   return getAnimationConfig(element.source.props);
 };
+
 const getAnimationConfigOfDestination = props => {
   const element = getElement(props);
   return getAnimationConfig(element.destination.props);
 };
+
 const fireEvent = (props, name) => {
   if (props[name]) {
     props[name]();
@@ -171,12 +199,15 @@ class SharedElement extends PureComponent {
     // just create an object for this shared element
     initElement(props);
   }
+
   componentDidMount() {
     setProps(this.props);
   }
+
   componentDidUpdate() {
     setProps(this.props);
   }
+
   componentWillUnmount() {
     const { startOnDestinationWillUnmount } = this.props;
 
@@ -184,6 +215,7 @@ class SharedElement extends PureComponent {
       this.moveToSource();
     }
   }
+
   setRef = node => {
     setRef(this.props, node);
 
@@ -194,6 +226,7 @@ class SharedElement extends PureComponent {
       ref(node);
     }
   };
+
   measure = (ref, callback) => {
     if (!ref) {
       callback(null);
@@ -204,6 +237,7 @@ class SharedElement extends PureComponent {
       callback(position);
     });
   };
+
   moveToDestination = () => {
     const { moveSharedElement } = this.context;
 
@@ -221,6 +255,7 @@ class SharedElement extends PureComponent {
       });
     }
   };
+
   moveToSource = () => {
     const { moveSharedElement } = this.context;
 
@@ -242,12 +277,14 @@ class SharedElement extends PureComponent {
       });
     }
   };
+
   onMoveToDestinationWillStart = () => {
     const { source, destination } = getElement(this.props);
 
     fireEvent(source.props, 'onMoveToDestinationWillStart');
     fireEvent(destination.props, 'onMoveToDestinationWillStart');
   };
+
   onMoveToDestinationDidFinish = () => {
     const { source, destination } = getElement(this.props);
 
@@ -258,12 +295,14 @@ class SharedElement extends PureComponent {
     fireEvent(source.props, 'onMoveToDestinationDidFinish');
     fireEvent(destination.props, 'onMoveToDestinationDidFinish');
   };
+
   onMoveToSourceWillStart = () => {
     const { source, destination } = getElement(this.props);
 
     fireEvent(destination.props, 'onMoveToSourceWillStart');
     fireEvent(source.props, 'onMoveToSourceWillStart');
   };
+
   onMoveToSourceDidFinish = () => {
     const { source, destination } = getElement(this.props);
 
@@ -274,9 +313,9 @@ class SharedElement extends PureComponent {
     fireEvent(destination.props, 'onMoveToSourceDidFinish');
     fireEvent(source.props, 'onMoveToSourceDidFinish');
   };
+
   onSourceLayout = data => {
     const element = getElement(this.props);
-
     const { ref } = element.source;
     this.measure(ref, position => {
       const startAnimation = get(this.props, 'waitingForSource');
@@ -295,20 +334,24 @@ class SharedElement extends PureComponent {
       onLayout(data);
     }
   };
-  onDestinationLayout = data => {
-    const { startOnDestinationDidMount, customSourceLayoutDimensions } = this.props;
-    const { source, destination } = getElement(this.props);
 
+  onDestinationLayout = data => {
+    const { startOnDestinationDidMount, customSourceLayoutForDestination, customDestinationLayoutForDestination } = this.props;
+    const { source, destination } = getElement(this.props);
     this.measure(source.ref, sourcePosition => {
-      const sourceLayoutPos = {
+      const newSourcePosition = {
         ...sourcePosition,
-        ...customSourceLayoutDimensions
+        ...customSourceLayoutForDestination,
       }
-      setSourcePosition(this.props, sourceLayoutPos);
+      setSourcePosition(this.props, newSourcePosition);
 
       this.measure(destination.ref, destinationPosition => {
+        const newDestinationPosition = {
+          ...destinationPosition,
+          ...customDestinationLayoutForDestination,
+        }
         const startAnimation = get(this.props, 'waitingForDestination');
-        setDestinationPosition(this.props, destinationPosition);
+        setDestinationPosition(this.props, newDestinationPosition);
 
         if (startAnimation || startOnDestinationDidMount) {
           this.moveToDestination();
@@ -323,6 +366,7 @@ class SharedElement extends PureComponent {
       onLayout(data);
     }
   };
+
   renderSource() {
     const { children } = this.props;
 
@@ -331,6 +375,7 @@ class SharedElement extends PureComponent {
       onLayout: this.onSourceLayout,
     });
   }
+
   renderDestination() {
     const { children } = this.props;
 
@@ -339,6 +384,7 @@ class SharedElement extends PureComponent {
       onLayout: this.onDestinationLayout,
     });
   }
+
   render() {
     const { sourceId } = this.props;
 
