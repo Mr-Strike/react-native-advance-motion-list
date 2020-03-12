@@ -319,9 +319,7 @@ class SharedElement extends PureComponent {
     const { ref } = element.source;
     this.measure(ref, position => {
       const startAnimation = get(this.props, 'waitingForSource');
-      setSourcePosition(this.props, {
-        ...position
-      });
+      setSourcePosition(this.props, position);
 
       // if the user wanted to move to destination but there wasn't source yet
       if (startAnimation) {
@@ -330,11 +328,11 @@ class SharedElement extends PureComponent {
     });
 
     // Call original if any
-    // const { children } = this.props;
-    // const { onLayout } = children;
-    // if (typeof onLayout === 'function') {
-    //   onLayout(data);
-    // }
+    const { children } = this.props;
+    const { onLayout } = children;
+    if (typeof onLayout === 'function') {
+      onLayout(data);
+    }
   };
 
   onDestinationLayout = data => {
@@ -362,11 +360,11 @@ class SharedElement extends PureComponent {
     });
 
     // Call original if any
-    // const { children } = this.props;
-    // const { onLayout } = children;
-    // if (typeof onLayout === 'function') {
-    //   onLayout(data);
-    // }
+    const { children } = this.props;
+    const { onLayout } = children;
+    if (typeof onLayout === 'function') {
+      onLayout(data);
+    }
   };
 
   renderSource() {
